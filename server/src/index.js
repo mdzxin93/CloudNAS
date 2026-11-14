@@ -28,7 +28,7 @@ const maxUpload=Number(process.env.MAX_UPLOAD_MB||100)*1024*1024;
 const secret=process.env.JWT_SECRET;
 if(!secret||secret.length<32)throw Error('Set JWT_SECRET to a random string of at least 32 characters');
 await Promise.all([fsp.mkdir(permanent,{recursive:true}),fsp.mkdir(temporary,{recursive:true})]);
-await mongoose.connect(process.env.MONGO_URI||'mongodb://127.0.0.1:27017/sam');
+await mongoose.connect(process.env.MONGO_URI||'mongodb://127.0.0.1:27017/cloudnas');
 app.use(helmet({contentSecurityPolicy:false}));app.use(cors({origin:process.env.CORS_ORIGIN?.split(',')||['http://localhost:5173'],credentials:true}));app.use(cookieParser());app.use(express.json({limit:'1mb'}));
 const authRate=rateLimit({windowMs:15*60*1000,limit:30,standardHeaders:'draft-7',legacyHeaders:false});
 const codeRate=rateLimit({windowMs:15*60*1000,limit:40,standardHeaders:'draft-7',legacyHeaders:false});

@@ -32,7 +32,7 @@ Open http://localhost:4000. Docker Compose persists MongoDB data and uploaded fi
 
 ## Quality checks
 Run npm run build, npm test and npm audit --omit=dev.
-The browser screenshots in screenshots/ document the desktop and mobile layouts. The QA scripts in qa/ capture repeatable browser checks.
+The screenshots in screenshots/ document the tested desktop and mobile layouts.
 
 ## Important deployment notes
 - Cloud Drive, OneDrive, Dropbox, WebDAV, FTP and SFTP are integration placeholders until provider credentials and OAuth/protocol flows are configured.
