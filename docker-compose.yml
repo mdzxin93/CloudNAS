@@ -19,7 +19,7 @@ services:
       - "4000:4000"
     environment:
       PORT: "4000"
-      MONGO_URI: mongodb://mongo:27017/sam
+      MONGO_URI: mongodb://mongo:27017/cloudnas
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
       DATA_DIR: /data
       NODE_ENV: production

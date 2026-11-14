@@ -1,53 +1,53 @@
-# SAM — responsive private file server
+# CloudNAS â€” Your private cloud storage
 
-SAM is a self-hosted React + Express + MongoDB app inspired by the provided clean blue/white mobile design. It includes authenticated private file storage, folders, file sharing, an anonymous 15-minute clipboard transfer, PDF/JPG/PNG/TXT tools, dark mode, and mobile/desktop navigation.
+CloudNAS is a responsive, self-hosted file storage and transfer application built with React, Vite, Express and MongoDB. It brings private file management, folders, sharing, temporary cross-device transfers and document utilities into one workspace.
 
-## What works
-- Registration, login, secure cookie sessions, logout, user isolation.
-- Private filesystem upload/download, file search/filter/sort/grid, rename/move, folder creation, recycle-bin restore/permanent delete.
-- Share links with expiration, recipient-restricted share records (recipient downloads via **Shared with me**), revocation.
-- Temporary text/file clipboard with six-digit codes and expiry.
-- JPEG/PNG/TXT to PDF using pdf-lib.
-- PDF optimization through installed Ghostscript (not bundled). Preset output sizes can be larger than the original. There is no guaranteed lossless compression.
-- Responsive React interface, main dashboard, PDF tool, cloud integration status page, settings.
+## Features
+- Account registration and login with Argon2 password hashing, protected sessions and per-user file isolation.
+- Private file upload/download, folders, search, sorting, grid/list views, rename, move and recycle-bin recovery.
+- Time-limited file sharing, recipient-restricted shares and link revocation.
+- Temporary text/file transfers using six-digit codes.
+- PNG/JPG/TXT to PDF conversion and optional PDF optimization when Ghostscript is installed.
+- Responsive desktop sidebar and mobile bottom navigation, light/dark themes.
+- Cloud integration status page with honest connection states; third-party providers require configuration.
 
-## Current limitations (read before production use)
-- **Cloud providers:** Google Drive, OneDrive, Dropbox, WebDAV, FTP and SFTP are UI-only *Not configured* entries. No OAuth providers are connected.
-- **Formats:** Word, PPT, Excel, Pages, GIF and other conversions are not supported yet. Plain TXT-to-PDF replaces non-ASCII characters with `?` using the built-in PDF font.
-- **ZIP:** bulk ZIP download is implemented for up to 50 selected files.
-- **File preview:** open-in-new-tab works with session cookies, and supported file types can display inline; behavior varies by browser.
-- **Folder operations:** single-level/multi-level folder creation works via API, but frontend creates folders at current location and does not yet expose all nesting/rename operations.
-- **Production readiness:** this is a functional starter application, not audited for public Internet deployment. Add virus scanning, transactional quota reservations/concurrency control, production backup verification, monitoring, central storage locking, and threat-model review before storing sensitive data.
-- **Anonymous transfers:** 6-digit codes have low entropy; use only for non-sensitive files, and do not deploy publicly without additional anti-abuse protection and IP throttling.
-- **Cleanup:** a periodic process removes expired metadata and temporary file bytes; for reliability in production, run it as a separate scheduled worker.
-- **Tests:** inspect test and validation notes; browser-level multi-device E2E testing requires an accessible MongoDB service and browser runner.
+## Technology
+- Frontend: React 18, Vite, React Router, Axios and Lucide icons.
+- Backend: Node.js 22+, Express, Mongoose, MongoDB, Argon2 and PDF-Lib.
+- Optional deployment: Docker Compose with persistent MongoDB and file-storage volumes.
 
-## Windows setup (VS Code)
-1. Install Node.js 22 or newer, MongoDB Community Server, and Git. Optional: install Ghostscript and add `gswin64c` to PATH.
-2. Open this folder in PowerShell. Copy `.env.example` to `.env`, and replace `JWT_SECRET` with a random 64-character secret (e.g. `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`).
-3. Start MongoDB as a Windows service. Confirm the Mongo connection string is correct.
-4. Run `npm install` then `npm run dev`.
-5. Open http://localhost:5173 and create a user account.
-6. To use your phone on the same Wi-Fi: run `ipconfig`, find the Windows IPv4 address, and browse `http://YOUR-IP:5173`. Configure Windows Firewall and CORS as needed. In `.env`, set `CORS_ORIGIN=http://YOUR-IP:5173,http://localhost:5173`; restart the server. Never open port 4000 or MongoDB to the public internet without proper reverse proxy/TLS and hardening.
+## Local setup (Windows / VS Code)
+1. Install Node.js 22+, MongoDB Community Server and Git.
+2. Copy .env.example to .env; set a unique random JWT_SECRET of at least 32 characters and confirm MONGO_URI.
+3. Start MongoDB and make sure the configured database is reachable.
+4. From the project root run:
+   npm install
+   npm run dev
+5. Open http://localhost:5173, create an account and start uploading files.
+6. Optional PDF optimization requires Ghostscript (gswin64c) installed and available on PATH.
 
-## Docker compose
-Create `.env` with `JWT_SECRET=<your secret>`, `CORS_ORIGIN=http://localhost:4000` and run `docker compose up --build`. Visit http://localhost:4000. The source includes separate persistent volumes for MongoDB and files. **For HTTPS deployments:** configure a reverse proxy with TLS and the correct externally visible CORS origin. `secure` cookies are required in production, so production HTTP logins won't persist without HTTPS.
+## Docker Compose
+Create .env with a strong JWT_SECRET and suitable CORS_ORIGIN, then run docker compose up --build.
+Open http://localhost:4000. Docker Compose persists MongoDB data and uploaded files in named volumes. Use HTTPS through a reverse proxy before exposing the service outside a trusted network.
 
-## API sketch
-`GET /api/health`; `GET /api/auth/csrf`; `POST /api/auth/register|login|logout`; `GET /api/auth/me`; `GET /api/stats`; `GET|POST /api/files`; `PATCH|DELETE /api/files/:id`; `POST /api/files/:id/restore`; `DELETE /api/files/:id/permanent`; `GET /api/files/:id/download`; `GET|POST /api/folders`; `DELETE /api/folders/:id`; `POST|GET /api/shares`; `DELETE /api/shares/:id`; `GET /api/shares/received`; `GET /api/shares/received/:id/download`; `GET /api/public/shares/:token`; `GET /api/public/shares/:token/download`; `POST /api/transfers/text|file|retrieve`; `GET /api/transfers/:code/download`; `POST /api/tools/to-pdf`; `POST /api/tools/optimize-pdf?preset=medium`.
+## Quality checks
+Run npm run build, npm test and npm audit --omit=dev.
+The browser screenshots in screenshots/ document the desktop and mobile layouts. The QA scripts in qa/ capture repeatable browser checks.
 
-API mutations require the X-CSRF-Token header returned by `/api/auth/csrf`. The UI handles it automatically. All storage paths are private and file identifiers are authorization checked.
+## Important deployment notes
+- Cloud Drive, OneDrive, Dropbox, WebDAV, FTP and SFTP are integration placeholders until provider credentials and OAuth/protocol flows are configured.
+- PDF optimization depends on Ghostscript; it is not bundled.
+- This is a functional self-hosted starter, not a certified security product. Before public production use, add malware scanning, backups and restore drills, monitoring, rate-limit review and an independent security assessment.
+- Do not commit .env, private uploads or database files. Keep the storage directory and database protected.
+## Screenshots
 
-## UI architecture
-React 18 + Vite, custom responsive CSS. Desktop: sidebar, search, cards, file explorer. Mobile: redesigned bottom navigation and full-width sheets. Colors: blue #4A80EF, mint #DDF8F1, sky #C7DDFF, background #F7F9FD, white and dark alternate.
+### Desktop
+![CloudNAS login](screenshots/01-cloudnas-login-desktop.png)
+![CloudNAS dashboard](screenshots/02-cloudnas-dashboard-desktop.png)
+![CloudNAS file manager](screenshots/03-cloudnas-files-desktop.png)
+![CloudNAS clipboard](screenshots/04-cloudnas-clipboard-desktop.png)
 
-## Quality check
-Run `npm run build` (frontend) and `npm test`. Manual smoke flow: register user A; upload a file; download/check bytes; create folder; rename and move; delete/restore; create share; open public link; clipboard send/retrieve from mobile; register user B and confirm A's files are not listed or directly downloadable. Verify 320px, 390px, 768px, 1280px responsive sizes.
-
-## Security notes
-- Do not version-control `.env`, or the `data` directory.
-- Database is not exposed from Docker Compose.
-- Passwords use Argon2id, filesystem keys are random, cookies are HTTP-only, same-site, and require HTTPS in production.
-- For a true always-on NAS, host the Docker service on a dedicated powered-on device with persistent disks and backups.
-
-License: original starter code created for the requested project. Branding and original reference site assets are not redistributed.
+### Mobile
+![CloudNAS mobile dashboard](screenshots/05-cloudnas-dashboard-mobile.png)
+![CloudNAS mobile file manager](screenshots/06-cloudnas-files-mobile.png)
+![CloudNAS mobile clipboard](screenshots/07-cloudnas-clipboard-mobile.png)

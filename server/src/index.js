@@ -38,10 +38,10 @@ const random=()=>crypto.randomBytes(24).toString('hex');
 const formatUser=u=>({id:u.id,name:u.name,email:u.email,role:u.role,quotaBytes:u.quotaBytes});
 const api=(fn)=>(req,res,next)=>Promise.resolve(fn(req,res)).catch(next);
 const fail=(status,msg)=>Object.assign(new Error(msg),{status});
-function setCsrf(res){const val=random();res.cookie('sam_csrf',val,{sameSite:'strict',secure:process.env.NODE_ENV==='production',httpOnly:false,path:'/'});return val;}
-function setSession(res,u){res.cookie('sam_session',jwt.sign({sub:u.id},secret,{expiresIn:'7d'}),{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',maxAge:604800000,path:'/'});return setCsrf(res);}
-async function auth(req,res,next){try{const token=req.cookies.sam_session;if(!token)throw fail(401,'Please sign in');const payload=jwt.verify(token,secret);const u=await User.findById(payload.sub);if(!u)throw fail(401,'Account unavailable');req.user=u;next();}catch(e){next(e.status?e:fail(401,'Session expired'));}}
-function csrf(req,res,next){if(['GET','HEAD','OPTIONS'].includes(req.method))return next();const origin=req.get('origin');const allowed=(process.env.CORS_ORIGIN||'http://localhost:5173').split(',');if(origin&&!allowed.includes(origin))return next(fail(403,'Origin not allowed'));if(!req.cookies.sam_csrf||req.cookies.sam_csrf!==req.get('x-csrf-token'))return next(fail(403,'Invalid CSRF token'));next();}
+function setCsrf(res){const val=random();res.cookie('cloudnas_csrf',val,{sameSite:'strict',secure:process.env.NODE_ENV==='production',httpOnly:false,path:'/'});return val;}
+function setSession(res,u){res.cookie('cloudnas_session',jwt.sign({sub:u.id},secret,{expiresIn:'7d'}),{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'strict',maxAge:604800000,path:'/'});return setCsrf(res);}
+async function auth(req,res,next){try{const token=req.cookies.cloudnas_session;if(!token)throw fail(401,'Please sign in');const payload=jwt.verify(token,secret);const u=await User.findById(payload.sub);if(!u)throw fail(401,'Account unavailable');req.user=u;next();}catch(e){next(e.status?e:fail(401,'Session expired'));}}
+function csrf(req,res,next){if(['GET','HEAD','OPTIONS'].includes(req.method))return next();const origin=req.get('origin');const allowed=(process.env.CORS_ORIGIN||'http://localhost:5173').split(',');if(origin&&!allowed.includes(origin))return next(fail(403,'Origin not allowed'));if(!req.cookies.cloudnas_csrf||req.cookies.cloudnas_csrf!==req.get('x-csrf-token'))return next(fail(403,'Invalid CSRF token'));next();}
 async function log(user,action,resource){await Activity.create({user:user?._id,action,resource}).catch(()=>{});}
 const validId=v=>mongoose.isValidObjectId(v);
 const ownership=async(user,id)=>{if(!validId(id))throw fail(400,'Invalid file ID');const f=await File.findOne({_id:id,owner:user._id,deletedAt:null});if(!f)throw fail(404,'File not found');return f;};
@@ -56,7 +56,7 @@ app.get('/api/health',(req,res)=>res.json({ok:true,database:mongoose.connection.
 app.get('/api/auth/csrf',(req,res)=>res.json({csrf:setCsrf(res)}));
 app.post('/api/auth/register',authRate,csrf,api(async(req,res)=>{const data=z.object({name:z.string().min(2).max(70),email:z.string().email(),password:z.string().min(10).max(128)}).parse(req.body);if(await User.exists({email:data.email.toLowerCase()}))throw fail(409,'Email already registered');const passwordHash=await argon2.hash(data.password);const u=await User.create({...data,email:data.email.toLowerCase(),passwordHash});const csrfToken=setSession(res,u);await log(u,'register',u.id);res.status(201).json({user:formatUser(u),csrf:csrfToken});}));
 app.post('/api/auth/login',authRate,csrf,api(async(req,res)=>{const d=z.object({email:z.string().email(),password:z.string()}).parse(req.body);const u=await User.findOne({email:d.email.toLowerCase()});if(!u||!(await argon2.verify(u.passwordHash,d.password)))throw fail(401,'Incorrect email or password');const csrfToken=setSession(res,u);res.json({user:formatUser(u),csrf:csrfToken});}));
-app.post('/api/auth/logout',csrf,(req,res)=>{res.clearCookie('sam_session');res.clearCookie('sam_csrf');res.json({ok:true})});
+app.post('/api/auth/logout',csrf,(req,res)=>{res.clearCookie('cloudnas_session');res.clearCookie('cloudnas_csrf');res.json({ok:true})});
 app.get('/api/auth/me',auth,api(async(req,res)=>res.json({user:formatUser(req.user)})));
 app.get('/api/stats',auth,api(async(req,res)=>{const agg=await File.aggregate([{$match:{owner:req.user._id,deletedAt:null}},{$group:{_id:null,bytes:{$sum:'$size'},count:{$sum:1}}}]);res.json({bytes:agg[0]?.bytes||0,count:agg[0]?.count||0,quota:req.user.quotaBytes});}));
 app.get('/api/files',auth,api(async(req,res)=>{const trash=req.query.trash==='1';let filter={owner:req.user._id,deletedAt:trash?{$ne:null}:null};if(!trash&&req.query.folder){filter.folder=await ensureFolder(req.user,String(req.query.folder));}else if(!trash&&req.query.root==='1')filter.folder=null;const files=await File.find(filter).sort({createdAt:-1}).limit(500).lean();res.json({files:files.map(f=>({...f,id:String(f._id)}))});}));
@@ -92,4 +92,4 @@ app.use((err,req,res,next)=>{if(res.headersSent)return next(err);if(err instance
 // MongoDB TTL removes documents, not their associated files. Sweep files before removing expired records.
 async function cleanup(){const expired=await Transfer.find({expiresAt:{$lt:new Date()}}).limit(1000);for(const t of expired){if(t.storageKey)await fsp.unlink(location(t.storageKey,true)).catch(()=>{});await t.deleteOne();}}
 setInterval(()=>cleanup().catch(console.error),5*60*1000).unref();cleanup().catch(console.error);
-app.listen(port,'0.0.0.0',()=>console.log(`SAM API listening on ${port}`));
+app.listen(port,'0.0.0.0',()=>console.log(`CloudNAS API listening on ${port}`));
