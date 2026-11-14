@@ -1,0 +1,10 @@
+import mongoose from 'mongoose';
+const {Schema,model}=mongoose;
+const opts={timestamps:true};
+export const User=model('User',new Schema({name:{type:String,required:true,trim:true},email:{type:String,unique:true,required:true,lowercase:true,trim:true},passwordHash:{type:String,required:true},role:{type:String,enum:['user','admin'],default:'user'},quotaBytes:{type:Number,default:5368709120}},opts));
+export const Folder=model('Folder',new Schema({name:{type:String,required:true},owner:{type:Schema.Types.ObjectId,ref:'User',required:true,index:true},parent:{type:Schema.Types.ObjectId,ref:'Folder',default:null}},opts));
+export const File=model('File',new Schema({name:String,storageKey:{type:String,required:true},owner:{type:Schema.Types.ObjectId,ref:'User',required:true,index:true},folder:{type:Schema.Types.ObjectId,ref:'Folder',default:null},size:Number,mime:String,checksum:String,deletedAt:{type:Date,default:null}},opts));
+export const Share=model('Share',new Schema({file:{type:Schema.Types.ObjectId,ref:'File',required:true},owner:{type:Schema.Types.ObjectId,ref:'User',required:true},recipient:{type:Schema.Types.ObjectId,ref:'User',default:null},tokenHash:{type:String,unique:true,sparse:true},permission:{type:String,enum:['view','edit'],default:'view'},expiresAt:Date},opts));
+export const Transfer=model('Transfer',new Schema({codeHash:{type:String,unique:true,required:true},kind:{type:String,enum:['text','file'],required:true},text:String,storageKey:String,name:String,mime:String,size:Number,expiresAt:{type:Date,required:true},attempts:{type:Number,default:0}},opts));
+Transfer.schema.index({expiresAt:1});
+export const Activity=model('Activity',new Schema({user:{type:Schema.Types.ObjectId,ref:'User'},action:String,resource:String,at:{type:Date,default:Date.now}},{}));
